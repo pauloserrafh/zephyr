@@ -1,0 +1,6 @@
+config KNOT
+	bool
+	prompt "KNOT Support"
+	help
+	  This option enables the KNOT library.
+

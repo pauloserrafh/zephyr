@@ -1,0 +1,5 @@
+menu "KNoT application protocol"
+
+source "ext/lib/net/knot/Kconfig"
+
+endmenu
