@@ -8,6 +8,17 @@
 
 /* KNoT State Machine */
 
+enum sm_state {
+	CONNECTED,
+	DISCONNECTED,
+	AUTHENTICATE,
+	REGISTER,
+	SCHEMA,
+	SCHEMA_RESP,
+	ONLINE,
+	RUN,
+};
+
 int sm_start(void);
 void sm_stop(void);
 
