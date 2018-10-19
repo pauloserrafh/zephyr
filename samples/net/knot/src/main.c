@@ -34,6 +34,9 @@ void main(void)
 
 	k_sem_init(&quit_lock, 0, UINT_MAX);
 
+	/* Guarantees NET and PROTO threads will be created */
+	k_sched_lock();
+
 	/*
 	 * KNoT state thread: manage device registration, detects
 	 * sensor data changes acting like a proxy forwarding data
@@ -52,6 +55,9 @@ void main(void)
 	 */
 	if (net_start(&p2n_pipe, &p2n_semaphore, &n2p_pipe, &n2p_semaphore) < 0)
 		return;
+
+	/* Allows NET and PROTO thread scheduling */
+	k_sched_unlock();
 
 	k_sem_take(&quit_lock, K_FOREVER);
 

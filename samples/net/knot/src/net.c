@@ -31,6 +31,8 @@ static struct k_sem *proto2net_semaphore;
 static struct k_sem *net2proto_semaphore;
 static bool connected;
 K_FIFO_DEFINE(net2proto_fifo);
+K_ALERT_DEFINE(connection_lost, NULL, 1);
+K_ALERT_DEFINE(connection_established, NULL, 1);
 
 struct data_item_t {
 	void *fifo_reserved;
@@ -76,6 +78,7 @@ static void close_cb(void)
 {
 	if (connected)
 		connected = false;
+	k_alert_send(&connection_lost);
 }
 
 static bool recv_cb(struct net_buf *netbuf)
@@ -119,6 +122,7 @@ static void connection_start(void)
 		return;
 	}
 
+	k_alert_send(&connection_established);
 	connected = true;
 }
 
@@ -149,7 +153,8 @@ static void net_thread(void)
 		}
 
 done:
-		k_sleep(1000);
+		/* Yelds to PROTO thread */
+		k_yield();
 	}
 
 	tcp6_stop();

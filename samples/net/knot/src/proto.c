@@ -36,6 +36,8 @@ static struct k_pipe *net2proto;
 static struct k_sem *proto2net_semaphore;
 static struct k_sem *net2proto_semaphore;
 K_FIFO_DEFINE(proto2net_fifo);
+extern struct k_alert connection_lost;
+extern struct k_alert connection_established;
 
 struct data_item_t {
 	void *fifo_reserved;
@@ -77,6 +79,15 @@ done:
 	return;
 }
 
+static void check_connection()
+{
+	if(k_alert_recv(&connection_lost, K_NO_WAIT) == 0)
+		sm_stop();
+
+	if(k_alert_recv(&connection_established, K_NO_WAIT) == 0)
+		sm_start();
+}
+
 static void proto_thread(void)
 {
 	/* Considering KNOT Max MTU 128 */
@@ -91,7 +102,6 @@ static void proto_thread(void)
 
 	/* Initializing SM and abstract IO internals */
 	sm_init();
-	sm_start();
 
 	/* Calling KNoT app: setup() */
 	setup();
@@ -99,6 +109,9 @@ static void proto_thread(void)
 	while (1) {
 		/* Calling KNoT app: loop() */
 		loop();
+
+		/* Check if NET thread connection established */
+		check_connection();
 
 		ilen = 0;
 		memset(&ipdu, 0, sizeof(ipdu));
@@ -118,10 +131,9 @@ static void proto_thread(void)
 
 		proto2net_send();
 
-		k_sleep(1000);
+		/* Yelds to NET thread */
+		k_yield();
 	}
-
-	sm_stop();
 }
 
 int proto_start(struct k_pipe *p2n,
