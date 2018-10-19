@@ -39,6 +39,7 @@ enum sm_state {
 	STATE_SCH,		/* Sends schema */
 	STATE_ONLINE,		/* Default state: sends & receive */
 	STATE_ERROR,		/* Reg, auth, sch error */
+	STATE_DISCONNECTED	/* Radio connection not established or lost */
 };
 
 static enum sm_state state;
@@ -372,7 +373,7 @@ int sm_start(void)
 
 	NET_DBG("SM: Start");
 
-	state = STATE_AUTH; /* Initial state */
+	state = STATE_AUTH;
 
 	device_id = 0;
 	memset(uuid, 0, sizeof(uuid));
@@ -408,12 +409,16 @@ void sm_stop(void)
 	if (to_on)
 		k_timer_stop(&to);
 
+	state = STATE_DISCONNECTED;
+
 	proxy_stop();
 }
 
 void sm_init(void)
 {
 	NET_DBG("SM: Init");
+
+	state = STATE_DISCONNECTED; /* Initial state */
 
 	k_timer_init(&to, timer_expired, NULL);
 
@@ -456,6 +461,10 @@ int sm_run(const u8_t *ipdu, size_t ilen, u8_t *opdu, size_t olen)
 	case STATE_ONLINE:
 		/* Incoming messages and/or changes on sensors */
 		next = state_online(ipdu, ilen, opdu, olen, &len);
+		break;
+	case STATE_DISCONNECTED:
+		/* No connection. Wait to (re)start.*/
+		next = STATE_DISCONNECTED;
 		break;
 	default:
 		strcpy(opdu, "ERR");
