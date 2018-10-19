@@ -33,6 +33,17 @@ static struct k_thread rx_thread_data;
 static K_THREAD_STACK_DEFINE(rx_stack, 1024);
 static struct k_pipe *proto2net;
 static struct k_pipe *net2proto;
+extern struct k_alert connection_lost;
+extern struct k_alert connection_established;
+
+static void check_connection()
+{
+	if(k_alert_recv(&connection_lost, K_NO_WAIT) == 0)
+		sm_stop();
+
+	if(k_alert_recv(&connection_established, K_NO_WAIT) == 0)
+		sm_start();
+}
 
 static void proto_thread(void)
 {
@@ -48,7 +59,6 @@ static void proto_thread(void)
 
 	/* Initializing SM and abstract IO internals */
 	sm_init();
-	sm_start();
 
 	/* Calling KNoT app: setup() */
 	setup();
@@ -56,6 +66,9 @@ static void proto_thread(void)
 	while (1) {
 		/* Calling KNoT app: loop() */
 		loop();
+
+		/* Check if NET thread connection established */
+		check_connection();
 
 		ilen = 0;
 		memset(&ipdu, 0, sizeof(ipdu));
@@ -70,10 +83,9 @@ static void proto_thread(void)
 			k_pipe_put(proto2net, opdu, olen,
 				   &olen, olen, K_NO_WAIT);
 
-		k_sleep(1000);
+		/* Yelds to NET thread */
+		k_yield();
 	}
-
-	sm_stop();
 }
 
 int proto_start(struct k_pipe *p2n, struct k_pipe *n2p)

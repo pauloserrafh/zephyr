@@ -28,11 +28,14 @@ static K_THREAD_STACK_DEFINE(rx_stack, 1024);
 static struct k_pipe *proto2net;
 static struct k_pipe *net2proto;
 static bool connected;
+K_ALERT_DEFINE(connection_lost, NULL, 1);
+K_ALERT_DEFINE(connection_established, NULL, 1);
 
 static void close_cb(void)
 {
 	if (connected)
 		connected = false;
+	k_alert_send(&connection_lost);
 }
 
 static bool recv_cb(struct net_buf *netbuf)
@@ -75,6 +78,7 @@ static void connection_start(void)
 		return;
 	}
 
+	k_alert_send(&connection_established);
 	connected = true;
 }
 
@@ -105,7 +109,8 @@ static void net_thread(void)
 		if (ret == 0 && ilen)
 			ret = tcp6_send(ipdu, ilen);
 done:
-		k_sleep(1000);
+		/* Yelds to PROTO thread */
+		k_yield();
 	}
 
 	tcp6_stop();
