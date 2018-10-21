@@ -24,6 +24,8 @@
 
 K_PIPE_DEFINE(p2n_pipe, 128, 4);
 K_PIPE_DEFINE(n2p_pipe, 128, 4);
+K_SEM_DEFINE(p2n_semaphore, 1, 1);
+K_SEM_DEFINE(n2p_semaphore, 1, 1);
 static struct k_sem quit_lock;
 
 void main(void)
@@ -38,7 +40,8 @@ void main(void)
 	 * from sensors to network layer (and oposite). Proto is
 	 * consumer of ipdu fifo and producer of opdu.
 	 */
-	if (proto_start(&p2n_pipe, &n2p_pipe) < 0)
+	if (proto_start(&p2n_pipe, &p2n_semaphore,
+						&n2p_pipe, &n2p_semaphore) < 0)
 		return;
 
 	/*
@@ -47,7 +50,7 @@ void main(void)
 	 * managing incoming and outgoing data. Net is consumer of
 	 * opdu fifo and producer of ipdu.
 	 */
-	if (net_start(&p2n_pipe, &n2p_pipe) < 0)
+	if (net_start(&p2n_pipe, &p2n_semaphore, &n2p_pipe, &n2p_semaphore) < 0)
 		return;
 
 	k_sem_take(&quit_lock, K_FOREVER);
